@@ -1,0 +1,110 @@
+# CODEOWNERS - Define code ownership for automatic review requests
+#
+# Each line is a file pattern followed by one or more owners.
+# Owners can be @username, @org/team-name, or email addresses.
+# Last matching pattern takes precedence.
+#
+# More specific patterns should be listed after general patterns.
+
+# Global Default - All files require review from engineering team
+* @org/engineering
+
+# Documentation - Technical writers and docs team
+*.md @org/docs-team
+*.rst @org/docs-team
+/docs/ @org/docs-team @org/engineering
+README.md @org/docs-team
+
+# ML/Data Science Code - ML team and data scientists
+/ml/ @org/ml-team @ml-lead
+/models/ @org/ml-team @data-science-lead
+/notebooks/ @org/data-science
+/datasets/ @org/data-science
+*.ipynb @org/ml-team
+/experiments/ @org/ml-team @ml-lead
+
+# Training Pipelines - ML engineers with infrastructure knowledge
+/ml/training/ @org/ml-engineers @ml-lead
+/ml/pipelines/ @org/ml-engineers @platform-team
+
+# Model Serving - ML + Platform teams
+/ml/serving/ @org/ml-team @org/platform-team
+/ml/inference/ @org/ml-team @org/platform-team
+
+# Infrastructure & DevOps - Platform team and SRE
+/terraform/ @org/platform-team @org/sre
+/k8s/ @org/platform-team @org/sre
+/kubernetes/ @org/platform-team @org/sre
+*.tf @org/platform-team
+*.tfvars @org/platform-team
+/ansible/ @org/sre
+/helm/ @org/platform-team
+
+# CI/CD - DevOps team
+/.github/ @org/devops @org/platform-team
+/.github/workflows/ @org/devops
+/.circleci/ @org/devops
+/jenkins/ @org/devops
+Jenkinsfile @org/devops
+
+# Backend Services - Backend team
+/services/ @org/backend-team
+/api/ @org/backend-team @api-lead
+/src/server/ @org/backend-team
+
+# Frontend - Frontend team
+/ui/ @org/frontend-team
+/src/client/ @org/frontend-team
+/components/ @org/frontend-team
+*.tsx @org/frontend-team
+*.jsx @org/frontend-team
+*.css @org/frontend-team
+*.scss @org/frontend-team
+
+# Database - Backend + DBA
+/migrations/ @org/backend-team @dba-lead
+/sql/ @org/backend-team @dba-lead
+*.sql @dba-lead
+
+# Security-Sensitive Files - Security team must approve
+/security/ @org/security-team
+/auth/ @org/security-team @org/backend-team
+**/secrets/ @org/security-team
+**/*secret* @org/security-team
+**/*credential* @org/security-team
+
+# Configuration Files - Platform team
+*.yaml @org/platform-team
+*.yml @org/platform-team
+*.json @org/backend-team
+*.toml @org/backend-team
+.env.example @org/platform-team
+
+# Package Dependencies - Require review from leads
+package.json @org/frontend-team @frontend-lead
+package-lock.json @org/frontend-team
+requirements.txt @org/backend-team @backend-lead
+Pipfile @org/backend-team
+poetry.lock @org/backend-team
+go.mod @org/backend-team
+go.sum @org/backend-team
+
+# Build & Tooling - DevOps + respective team leads
+Dockerfile @org/devops @org/platform-team
+docker-compose.yml @org/devops
+Makefile @org/devops
+/scripts/ @org/devops
+
+# Tests - Owned by respective feature teams
+/tests/ml/ @org/ml-team
+/tests/api/ @org/backend-team
+/tests/ui/ @org/frontend-team
+
+# Monitoring & Observability - SRE team
+/monitoring/ @org/sre
+/grafana/ @org/sre
+/prometheus/ @org/sre
+/alerting/ @org/sre
+
+# Experiment Registry - ML team leads must approve
+/experiments/registry/ @ml-lead @data-science-lead

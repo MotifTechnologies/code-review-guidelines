@@ -1,0 +1,217 @@
+name: Review SLA Monitoring
+
+on:
+  schedule:
+    # Run every 4 hours
+    - cron: '0 */4 * * *'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  check-sla:
+    name: Check PR Review SLAs
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check open PRs for SLA breaches
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const now = new Date();
+
+            // SLA definitions in milliseconds
+            const SLA_LIMITS = {
+              'tier:SHIP': 0,                    // Immediate (handled by auto-merge)
+              'tier:SHOW': 24 * 60 * 60 * 1000, // 24 hours
+              'tier:ASK': 4 * 60 * 60 * 1000    // 4 hours for first response
+            };
+
+            const SLA_DESCRIPTIONS = {
+              'tier:SHIP': 'Immediate (auto-merge)',
+              'tier:SHOW': '24 hours for asynchronous review',
+              'tier:ASK': '4 hours for first response'
+            };
+
+            // Get all open PRs
+            const { data: pullRequests } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            console.log(`Checking ${pullRequests.length} open PRs for SLA breaches...`);
+
+            for (const pr of pullRequests) {
+              const prNumber = pr.number;
+              const createdAt = new Date(pr.created_at);
+              const ageMs = now - createdAt;
+
+              // Get PR labels
+              const { data: prDetails } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber
+              });
+
+              const labels = prDetails.labels.map(l => l.name);
+              const tierLabel = labels.find(l => l.startsWith('tier:'));
+
+              if (!tierLabel) {
+                console.log(`PR #${prNumber}: No tier label found, skipping`);
+                continue;
+              }
+
+              const slaLimit = SLA_LIMITS[tierLabel];
+              const slaDescription = SLA_DESCRIPTIONS[tierLabel];
+
+              // Skip SHIP tier (handled by auto-merge)
+              if (tierLabel === 'tier:SHIP') {
+                console.log(`PR #${prNumber}: SHIP tier, skipping (handled by auto-merge)`);
+                continue;
+              }
+
+              // Check if SLA is breached
+              if (ageMs > slaLimit) {
+                const ageHours = Math.floor(ageMs / (60 * 60 * 1000));
+                const slaHours = Math.floor(slaLimit / (60 * 60 * 1000));
+
+                console.log(`PR #${prNumber}: SLA breach detected (${ageHours}h old, SLA: ${slaHours}h)`);
+
+                // Check if we've already posted a reminder
+                const { data: comments } = await github.rest.issues.listComments({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber
+                });
+
+                const hasRecentReminder = comments.some(comment =>
+                  comment.body.includes('⏰ SLA Reminder') &&
+                  (now - new Date(comment.created_at)) < 12 * 60 * 60 * 1000 // Within last 12 hours
+                );
+
+                if (hasRecentReminder) {
+                  console.log(`PR #${prNumber}: Recent reminder already posted, skipping`);
+                  continue;
+                }
+
+                // Get reviews to check if there's been any response
+                const { data: reviews } = await github.rest.pulls.listReviews({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber
+                });
+
+                const hasReviews = reviews.length > 0;
+                const reviewStatus = hasReviews ? 'in progress' : 'pending initial response';
+
+                // Post SLA reminder comment
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: `⏰ **SLA Reminder**\n\n` +
+                        `This PR is **${tierLabel.replace('tier:', '')} tier** and has been open for **${ageHours} hours**.\n\n` +
+                        `**SLA Target:** ${slaDescription}\n` +
+                        `**Current Status:** ${reviewStatus}\n\n` +
+                        (tierLabel === 'tier:ASK'
+                          ? '🔍 This is a critical PR requiring synchronous review. Please prioritize.\n\n'
+                          : '👀 Please review at your earliest convenience.\n\n') +
+                        `---\n` +
+                        `*Automated reminder from Review SLA Monitor*`
+                });
+
+                console.log(`PR #${prNumber}: SLA reminder posted`);
+
+                // For ASK tier, also add a label if severely overdue (>8 hours)
+                if (tierLabel === 'tier:ASK' && ageHours > 8) {
+                  try {
+                    await github.rest.issues.addLabels({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: prNumber,
+                      labels: ['sla-breach']
+                    });
+                    console.log(`PR #${prNumber}: Added sla-breach label`);
+                  } catch (error) {
+                    console.log(`PR #${prNumber}: Could not add sla-breach label (may not exist)`);
+                  }
+                }
+              } else {
+                console.log(`PR #${prNumber}: Within SLA (${Math.floor(ageMs / (60 * 60 * 1000))}h old, SLA: ${Math.floor(slaLimit / (60 * 60 * 1000))}h)`);
+              }
+            }
+
+            console.log('SLA check complete');
+
+      - name: Generate SLA report
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const now = new Date();
+
+            // Get all open PRs
+            const { data: pullRequests } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            const report = {
+              timestamp: now.toISOString(),
+              total_open_prs: pullRequests.length,
+              by_tier: {
+                SHIP: [],
+                SHOW: [],
+                ASK: []
+              },
+              sla_breaches: []
+            };
+
+            const SLA_LIMITS = {
+              'tier:SHIP': 0,
+              'tier:SHOW': 24 * 60 * 60 * 1000,
+              'tier:ASK': 4 * 60 * 60 * 1000
+            };
+
+            for (const pr of pullRequests) {
+              const { data: prDetails } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number
+              });
+
+              const labels = prDetails.labels.map(l => l.name);
+              const tierLabel = labels.find(l => l.startsWith('tier:'));
+
+              if (tierLabel) {
+                const tier = tierLabel.replace('tier:', '');
+                const createdAt = new Date(pr.created_at);
+                const ageMs = now - createdAt;
+                const slaLimit = SLA_LIMITS[tierLabel];
+
+                const prInfo = {
+                  number: pr.number,
+                  title: pr.title,
+                  age_hours: Math.floor(ageMs / (60 * 60 * 1000)),
+                  within_sla: ageMs <= slaLimit
+                };
+
+                report.by_tier[tier].push(prInfo);
+
+                if (!prInfo.within_sla && tier !== 'SHIP') {
+                  report.sla_breaches.push(prInfo);
+                }
+              }
+            }
+
+            console.log('--- SLA REPORT ---');
+            console.log(JSON.stringify(report, null, 2));
+            console.log('--- END REPORT ---');

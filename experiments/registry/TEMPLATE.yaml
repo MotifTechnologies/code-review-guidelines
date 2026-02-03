@@ -1,0 +1,138 @@
+# Experiment Registration Template
+# Copy this file and fill in your experiment details
+# File naming: YYYY-MM-DD-experiment-name.yaml
+
+experiment:
+  # Unique identifier for this experiment (auto-generated or custom)
+  id: "exp-YYYY-MM-DD-001"
+
+  # Human-readable experiment name
+  name: "Experiment Name Here"
+
+  # Experiment owner (GitHub username)
+  owner: "@username"
+
+  # Git branch for this experiment
+  branch: "experiment/experiment-name"
+
+  # Related PR number (if applicable)
+  pr: null
+
+# Clear hypothesis being tested
+hypothesis: |
+  Brief description of what you're testing and expected outcome.
+  Example: "Using transformer architecture instead of LSTM will improve
+  accuracy by 5% while reducing training time by 20%."
+
+# Timeline
+timeline:
+  start_date: "YYYY-MM-DD"
+  expected_duration: "2 weeks"
+  end_date: null  # Filled upon completion
+
+# Resource requirements
+resources:
+  # Compute resources needed
+  gpus: 0
+  gpu_type: null  # e.g., "V100", "A100"
+  cpu_cores: 4
+  memory_gb: 16
+
+  # Estimated costs
+  estimated_cost: "$0"
+  actual_cost: null  # Filled upon completion
+
+  # Special requirements
+  special_requirements: []
+  # Example:
+  # - "Access to production logs"
+  # - "Kubernetes cluster access"
+
+# Success criteria - How will you know if the experiment succeeded?
+success_criteria:
+  - "Criterion 1: Specific metric threshold"
+  - "Criterion 2: Another measurable outcome"
+  - "Criterion 3: Qualitative assessment"
+# Example:
+# - "Test accuracy > 0.85"
+# - "Training time < 2 hours"
+# - "Model size < 100MB"
+
+# Current status
+status: "planned"  # planned | in-progress | completed | abandoned
+
+# Dependencies
+dependencies:
+  experiments: []  # IDs of prerequisite experiments
+  data_sources: []
+  external_services: []
+# Example:
+# experiments:
+#   - "exp-2024-01-15-001"
+# data_sources:
+#   - "s3://bucket/dataset-v2"
+# external_services:
+#   - "MLflow tracking server"
+
+# Baseline comparison
+baseline:
+  model: null
+  metrics: {}
+# Example:
+# model: "lstm-baseline-v1"
+# metrics:
+#   accuracy: 0.78
+#   training_time_hours: 4.5
+
+# Results (filled upon completion)
+results:
+  outcome: null  # success | failure | inconclusive
+
+  # Summary of findings
+  summary: null
+  # Example: "Transformer model achieved 0.83 accuracy (vs 0.78 baseline)
+  # but required 3x more training time. Not recommended for production."
+
+  # Key metrics achieved
+  metrics: {}
+  # Example:
+  # accuracy: 0.83
+  # training_time_hours: 13.5
+  # inference_latency_ms: 45
+
+  # Artifacts produced
+  artifacts:
+    models: []
+    datasets: []
+    notebooks: []
+    reports: []
+  # Example:
+  # models:
+  #   - "s3://models/exp-001/model.pt"
+  # notebooks:
+  #   - "notebooks/exp-001-analysis.ipynb"
+  # reports:
+  #   - "docs/experiments/exp-001-final-report.md"
+
+  # Lessons learned
+  lessons_learned: []
+  # Example:
+  # - "Batch size of 128 works better than 64"
+  # - "Data augmentation didn't help for this task"
+
+  # Next steps or follow-up experiments
+  next_steps: []
+  # Example:
+  # - "Try hybrid LSTM+transformer architecture"
+  # - "Investigate why training time increased"
+
+# Tags for categorization
+tags: []
+# Example:
+# - "nlp"
+# - "transformers"
+# - "performance-optimization"
+
+# Additional notes
+notes: |
+  Any additional context, assumptions, or important details about this experiment.

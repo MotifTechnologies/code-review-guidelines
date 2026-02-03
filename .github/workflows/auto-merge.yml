@@ -1,0 +1,142 @@
+name: Auto-merge SHIP Tier PRs
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'docs/**'
+      - '*.md'
+      - 'experiments/**'
+      - '.vscode/**'
+
+jobs:
+  check-ship-tier:
+    name: Verify SHIP Tier Eligibility
+    runs-on: ubuntu-latest
+    outputs:
+      is_ship: ${{ steps.verify.outputs.is_ship }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+        with:
+          files_yaml: |
+            ship:
+              - 'docs/**'
+              - '*.md'
+              - 'experiments/**'
+              - '.vscode/**'
+            critical:
+              - 'src/**'
+              - 'lib/**'
+              - 'core/**'
+              - '.github/workflows/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tsconfig.json'
+              - '.env*'
+              - 'security/**'
+              - 'auth/**'
+
+      - name: Verify SHIP tier
+        id: verify
+        run: |
+          if [[ "${{ steps.changed-files.outputs.ship_any_changed }}" == "true" ]] && \
+             [[ "${{ steps.changed-files.outputs.critical_any_changed }}" == "false" ]]; then
+            echo "is_ship=true" >> $GITHUB_OUTPUT
+            echo "✅ PR is SHIP tier eligible (only non-critical files changed)"
+          else
+            echo "is_ship=false" >> $GITHUB_OUTPUT
+            echo "❌ PR is not SHIP tier (critical files detected)"
+          fi
+
+  markdown-lint:
+    name: Lint Markdown Files
+    runs-on: ubuntu-latest
+    needs: check-ship-tier
+    if: needs.check-ship-tier.outputs.is_ship == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install markdownlint
+        run: npm install -g markdownlint-cli
+
+      - name: Run markdownlint
+        run: |
+          markdownlint '**/*.md' --ignore node_modules --ignore .github --config .markdownlint.json || {
+            echo "Creating default markdownlint config..."
+            cat > .markdownlint.json << 'EOF'
+          {
+            "default": true,
+            "MD013": false,
+            "MD033": false,
+            "MD041": false
+          }
+          EOF
+            markdownlint '**/*.md' --ignore node_modules --ignore .github --config .markdownlint.json
+          }
+
+  enable-auto-merge:
+    name: Enable Auto-merge
+    runs-on: ubuntu-latest
+    needs: [check-ship-tier, markdown-lint]
+    if: needs.check-ship-tier.outputs.is_ship == 'true'
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: Enable auto-merge
+        uses: pascalgn/automerge-action@v0.16.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_LABELS: ""
+          MERGE_METHOD: squash
+          MERGE_COMMIT_MESSAGE: pull-request-title
+          MERGE_FORKS: false
+          MERGE_RETRIES: 6
+          MERGE_RETRY_SLEEP: 10000
+          UPDATE_LABELS: ""
+          UPDATE_METHOD: rebase
+
+      - name: Add auto-merge comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '🤖 **Auto-merge enabled** for this SHIP tier PR.\n\nThis PR will be automatically merged with squash method once all checks pass.'
+            });
+
+  request-review-fallback:
+    name: Request Review if Auto-merge Fails
+    runs-on: ubuntu-latest
+    needs: [check-ship-tier, enable-auto-merge]
+    if: needs.check-ship-tier.outputs.is_ship == 'true' && failure()
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Request manual review
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '⚠️ Auto-merge checks failed. This PR requires manual review.\n\nPlease review the failed checks and address any issues.'
+            });

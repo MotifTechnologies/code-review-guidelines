@@ -1,0 +1,14 @@
+# Default owners for everything in the repo
+* @MotifTechnologies/engineering
+
+# Documentation files
+*.md @MotifTechnologies/docs-team
+/docs/ @MotifTechnologies/docs-team
+
+# GitHub workflows and configuration
+/.github/ @MotifTechnologies/platform-team
+/.github/workflows/ @MotifTechnologies/platform-team
+
+# Issue and PR templates
+/.github/ISSUE_TEMPLATE/ @MotifTechnologies/docs-team
+/.github/PULL_REQUEST_TEMPLATE/ @MotifTechnologies/docs-team

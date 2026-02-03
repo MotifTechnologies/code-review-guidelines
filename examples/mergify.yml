@@ -1,0 +1,137 @@
+# Mergify Configuration
+# Auto-merge rules for SHIP tier PRs and dependency updates
+
+queue_rules:
+  - name: default
+    conditions:
+      - status-success=ci
+      - status-success=tests
+
+pull_request_rules:
+  # SHIP Tier Auto-Merge
+  # PRs labeled as SHIP (trivial changes) merge automatically after CI passes
+  - name: Auto-merge SHIP tier PRs
+    conditions:
+      - label=SHIP
+      - status-success=ci
+      - status-success=tests
+      - "#approved-reviews-by>=1"
+      - "#changes-requested-reviews-by=0"
+    actions:
+      queue:
+        name: default
+        method: squash
+      comment:
+        message: |
+          🚢 SHIP tier PR - Auto-merging after CI passes
+          This change was classified as trivial and approved for automatic merge.
+
+  # Dependency Update Auto-Merge
+  # Automated dependency updates merge after CI passes
+  - name: Auto-merge dependency updates
+    conditions:
+      - author~=^(dependabot|renovate)\[bot\]$
+      - status-success=ci
+      - status-success=tests
+      - or:
+          - title~=^(chore|deps|build)\(deps\):
+          - label=dependencies
+    actions:
+      queue:
+        name: default
+        method: squash
+      comment:
+        message: |
+          🤖 Dependency update - Auto-merging after CI passes
+
+  # Minor Version Bumps - Require Single Approval
+  - name: Auto-merge minor dependency updates with approval
+    conditions:
+      - author~=^(dependabot|renovate)\[bot\]$
+      - title~=^deps: bump .* from .* to .*\.(0|[1-9]\d*)\.(0|[1-9]\d*)$
+      - status-success=ci
+      - status-success=tests
+      - "#approved-reviews-by>=1"
+    actions:
+      queue:
+        name: default
+        method: squash
+
+  # Auto-Request Reviews for Non-SHIP PRs
+  # Automatically assign reviewers based on CODEOWNERS
+  - name: Request reviews for ANCHOR tier
+    conditions:
+      - label=ANCHOR
+      - "#approved-reviews-by=0"
+    actions:
+      request_reviews:
+        teams:
+          - @org/senior-engineers
+      comment:
+        message: |
+          ⚓ ANCHOR tier PR - Requesting review from senior engineers
+          This change requires careful architectural review.
+
+  - name: Request reviews for RAFT tier
+    conditions:
+      - label=RAFT
+      - "#approved-reviews-by=0"
+    actions:
+      request_reviews:
+        teams:
+          - @org/team-leads
+      comment:
+        message: |
+          🛟 RAFT tier PR - Requesting review from team leads
+          This change has moderate complexity and requires expert review.
+
+  - name: Request reviews for CRUISE tier
+    conditions:
+      - label=CRUISE
+      - "#approved-reviews-by=0"
+    actions:
+      request_reviews:
+        random_count: 2
+      comment:
+        message: |
+          ⛵ CRUISE tier PR - Requesting peer review
+          This change is straightforward and ready for review.
+
+  # Auto-label PRs based on file patterns
+  - name: Label ML code changes
+    conditions:
+      - files~=^(ml/|models/|notebooks/)
+    actions:
+      label:
+        add:
+          - ml-code
+
+  - name: Label infrastructure changes
+    conditions:
+      - files~=^(terraform/|k8s/|\.github/workflows/)
+    actions:
+      label:
+        add:
+          - infrastructure
+
+  - name: Label documentation changes
+    conditions:
+      - files~=\.(md|rst|txt)$
+    actions:
+      label:
+        add:
+          - documentation
+
+  # Auto-close stale PRs
+  - name: Close stale PRs
+    conditions:
+      - base=main
+      - -closed
+      - updated-at<30 days ago
+      - "#commits-behind>50"
+    actions:
+      comment:
+        message: |
+          This PR has been inactive for 30 days and is significantly behind the base branch.
+          Closing due to inactivity. Please reopen if you plan to continue work.
+      close: {}

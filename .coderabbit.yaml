@@ -1,0 +1,168 @@
+# CodeRabbit AI Code Review Configuration
+# Configures automated AI-powered code reviews for pull requests
+
+# Language for review comments
+language: en
+
+# Review settings
+reviews:
+  # Enable automatic review on PR creation and updates
+  auto_review:
+    enabled: true
+    # Trigger review on draft PRs as well
+    drafts: true
+
+  # Review profile determines the thoroughness and tone of reviews
+  # Options: chill, assertive, aggressive
+  # - chill: Gentle suggestions, focuses on critical issues
+  # - assertive: Balanced approach, flags important issues (RECOMMENDED)
+  # - aggressive: Very thorough, flags even minor issues
+  profile: assertive
+
+  # Request changes if critical issues are found
+  request_changes_workflow: true
+
+  # High-level summary of changes
+  high_level_summary: true
+
+  # Include AI-generated poem in review (for fun)
+  poem: false
+
+  # Review specific aspects
+  review_status: true
+  collapse_walkthrough: false
+
+  # Path-based filters
+  path_filters:
+    # Skip documentation-only changes
+    exclude:
+      - "**/*.md"
+      - "**/*.rst"
+      - "**/*.txt"
+      - "docs/**"
+      - "README*"
+    # Focus on code files
+    include:
+      - "**/*.py"
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/*.js"
+      - "**/*.jsx"
+      - "**/*.go"
+      - "**/*.rs"
+      - "**/*.java"
+
+  # Auto-approve specific types of changes
+  auto_approve:
+    # Auto-approve dependency updates from trusted bots
+    enabled: true
+    conditions:
+      - author: "dependabot[bot]"
+        files: ["package.json", "package-lock.json", "requirements.txt", "go.mod", "go.sum"]
+      - author: "renovate[bot]"
+        files: ["package.json", "package-lock.json", "requirements.txt", "go.mod", "go.sum"]
+
+# Chat settings for interactive discussions
+chat:
+  # Allow PR authors to ask questions in review comments
+  auto_reply: true
+
+# Code quality checks
+checks:
+  # Check for common security vulnerabilities
+  security:
+    enabled: true
+
+  # Check for performance issues
+  performance:
+    enabled: true
+
+  # Check for best practices
+  best_practices:
+    enabled: true
+
+  # Check test coverage
+  test_coverage:
+    enabled: true
+    # Warn if coverage decreases
+    threshold: 70
+
+# Comment settings
+comments:
+  # Minimize noise by collapsing less important comments
+  collapse_on_resolve: true
+
+  # Group related comments together
+  group_similar: true
+
+# Integration with tier system
+# CodeRabbit reviews complement human reviews based on PR tier
+tier_integration:
+  # SHIP tier: AI review sufficient, auto-approve if clean
+  ship:
+    auto_approve_on_clean_review: true
+
+  # CRUISE tier: AI review + 1 human approval
+  cruise:
+    require_human_approval: true
+    min_approvals: 1
+
+  # RAFT tier: AI review + expert human review
+  raft:
+    require_human_approval: true
+    min_approvals: 1
+    require_expert: true
+
+  # ANCHOR tier: AI review + thorough human review
+  anchor:
+    require_human_approval: true
+    min_approvals: 2
+    require_architect_review: true
+
+# Ignore specific files or patterns
+ignore:
+  # Generated files
+  - "**/*_pb2.py"
+  - "**/*.generated.*"
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/.next/**"
+
+  # Vendor directories
+  - "**/vendor/**"
+  - "**/node_modules/**"
+  - "**/.venv/**"
+
+  # Lock files (too noisy)
+  - "**/package-lock.json"
+  - "**/yarn.lock"
+  - "**/poetry.lock"
+  - "**/Pipfile.lock"
+
+  # Configuration files
+  - "**/*.config.js"
+  - "**/.eslintrc*"
+  - "**/.prettierrc*"
+
+# Custom rules
+custom_rules:
+  # Flag TODOs and FIXMEs
+  - pattern: "TODO|FIXME|XXX|HACK"
+    message: "Found technical debt marker. Consider creating a ticket."
+    severity: info
+
+  # Flag console.log in production code
+  - pattern: "console\\.(log|debug|info)"
+    exclude_paths: ["**/*.test.*", "**/*.spec.*", "**/scripts/**"]
+    message: "Remove console.log statements from production code. Use proper logging."
+    severity: warning
+
+  # Flag hardcoded credentials
+  - pattern: "(password|api_key|secret|token)\\s*=\\s*['\"]\\w+"
+    message: "Potential hardcoded credential detected. Use environment variables or secret management."
+    severity: error
+
+  # Flag missing error handling
+  - pattern: "except:\\s*pass"
+    message: "Empty except block found. Add proper error handling or logging."
+    severity: warning
