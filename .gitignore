@@ -38,8 +38,8 @@ coverage/
 .coverage
 htmlcov/
 
-# Oh-my-claudecode state (keep for development)
-# .omc/
+# Oh-my-claudecode state
+.omc/
 
 # Swap files
 .*.swp
